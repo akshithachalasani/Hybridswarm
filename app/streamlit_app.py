@@ -86,19 +86,21 @@ def evaluate(model, name):
     }
 
 # ---------------- HYBRID MODEL (STRONGER CONFIG) ---------------- #
+from sklearn.ensemble import StackingClassifier
+
 def hybrid_model():
 
     # PSO optimized Random Forest
     rf = RandomForestClassifier(
-        n_estimators=300,
-        max_depth=20,
+        n_estimators=400,
+        max_depth=25,
         min_samples_split=2,
         random_state=42
     )
 
     # ACO optimized SVM
     svm = SVC(
-        C=10,
+        C=15,
         kernel="rbf",
         gamma="scale",
         probability=True
@@ -106,17 +108,23 @@ def hybrid_model():
 
     # GA optimized Logistic Regression
     lr = LogisticRegression(
-        C=5,
-        max_iter=3000
+        C=8,
+        max_iter=4000
     )
 
-    hybrid = VotingClassifier(
-        estimators=[("rf", rf), ("svm", svm), ("lr", lr)],
-        voting="soft",
-        weights=[3, 2, 2]  # give RF more dominance
+    # 🔥 Stacking (Hybrid Swarm Integration)
+    hybrid = StackingClassifier(
+        estimators=[
+            ("rf", rf),
+            ("svm", svm),
+            ("lr", lr)
+        ],
+        final_estimator=RandomForestClassifier(n_estimators=200),
+        passthrough=True
     )
 
     return hybrid
+
 
 # ---------------- RUN ---------------- #
 if run:
@@ -169,3 +177,4 @@ if run:
 
     ax.set_title(f"Confusion Matrix - {best_model_name}")
     st.pyplot(fig)
+
