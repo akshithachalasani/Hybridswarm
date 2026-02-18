@@ -1,58 +1,40 @@
 import pandas as pd
-import numpy as np
-from sklearn.preprocessing import StandardScaler
 from imblearn.over_sampling import SMOTE
+from sklearn.model_selection import train_test_split
+import streamlit as st
 
 
-def preprocess_data(path):
+def preprocess_data(df, target_column="bug"):
+    """
+    Preprocess dataset safely for training.
+    Handles single-class datasets without crashing.
+    """
 
-    df = pd.read_csv(path)
+    # Check if target column exists
+    if target_column not in df.columns:
+        st.error(f"Target column '{target_column}' not found in dataset.")
+        return None, None, None, None
 
     # Split features and target
-    X = df.iloc[:, :-1]
-    y = df.iloc[:, -1]
+    X = df.drop(columns=[target_column])
+    y = df[target_column]
 
-    # -----------------------------
-    # SAFE TARGET CLEANING (NO APPLY)
-    # -----------------------------
+    # 🚨 FIX 1 — Handle single-class dataset
+    if y.nunique() < 2:
+        st.warning("⚠ Dataset contains only one class. Skipping model training.")
+        return None, None, None, None
 
-    # Convert to numeric safely
-    y = pd.to_numeric(y, errors="coerce")
+    # 🚨 FIX 2 — Apply SMOTE safely
+    try:
+        smote = SMOTE()
+        X, y = smote.fit_resample(X, y)
+    except Exception as e:
+        st.warning("SMOTE could not be applied. Continuing without resampling.")
+        print("SMOTE error:", e)
 
-    # Replace NaN with 0
-    y = y.fillna(0)
+    # Split dataset
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.2, random_state=42, stratify=y
+    )
 
-    # Convert to binary
-    y = np.where(y > 0, 1, 0)
-
-    y = pd.Series(y)
-
-    # -----------------------------
-    # CLEAN FEATURES
-    # -----------------------------
-
-    # Drop all-NaN columns
-    X = X.dropna(axis=1, how="all")
-
-    # Fill remaining NaN
-    X = X.fillna(0)
-
-    # Remove constant columns
-    X = X.loc[:, X.nunique() > 1]
-
-    feature_names = X.columns.tolist()
-
-    scaler = StandardScaler()
-    X_scaled = scaler.fit_transform(X)
-
-    # -----------------------------
-    # Apply SMOTE safely
-    # -----------------------------
-
-    if len(np.unique(y)) > 1:
-        sm = SMOTE(random_state=42)
-        X_res, y_res = sm.fit_resample(X_scaled, y)
-    else:
-        X_res, y_res = X_scaled, y
-
-    return X_res, y_res, feature_names
+    return X_train, X_test, y_train, y_test
