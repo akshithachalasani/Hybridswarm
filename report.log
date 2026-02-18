@@ -1,0 +1,13 @@
+2026-02-01 15:56:58,173 - pyswarms.discrete.binary - INFO - Optimize for 30 iters with {'k': 1, 'p': 2}
+2026-02-01 15:57:09,384 - pyswarms.backend.operators - ERROR - Missing keyword in swarm.options
+Traceback (most recent call last):
+  File "C:\Users\Sweety\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\pyswarms\backend\operators.py", line 128, in compute_velocity
+    c1 = swarm.options["c1"]
+         ~~~~~~~~~~~~~^^^^^^
+KeyError: 'c1'
+2026-02-01 15:58:38,490 - pyswarms.discrete.binary - INFO - Optimize for 20 iters with {'c1': 0.5, 'c2': 0.3, 'w': 0.9, 'k': 1, 'p': 2}
+2026-02-01 16:02:11,619 - pyswarms.discrete.binary - INFO - Optimization finished | best cost: -0.2021164021164021, best pos: [1 1 0 0 1 1 1 1 0 0 0 0 1 0 0 0 1 0 0 0 1]
+2026-02-01 16:18:33,567 - pyswarms.discrete.binary - INFO - Optimize for 20 iters with {'c1': 0.5, 'c2': 0.3, 'w': 0.9, 'k': 1, 'p': 2}
+2026-02-01 16:25:12,344 - pyswarms.discrete.binary - INFO - Optimization finished | best cost: -0.3537491315269093, best pos: [1 0 1 0 1 0 1 1 0 1 0 0 1 1 0 1 1 0 0 0 0]
+2026-02-01 16:45:46,222 - pyswarms.discrete.binary - INFO - Optimize for 10 iters with {'c1': 0.5, 'c2': 0.3, 'w': 0.9, 'k': 1, 'p': 2}
+2026-02-01 16:46:08,434 - pyswarms.discrete.binary - INFO - Optimization finished | best cost: -0.18010752688172044, best pos: [0 0 0 1 0 0 1 0 0 0 0 0 0 1 0 1 1 0 0 0 0]
