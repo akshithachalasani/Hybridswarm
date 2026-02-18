@@ -74,9 +74,11 @@ def evaluate(model, name):
     y_pred = model.predict(X_test)
 
     acc = accuracy_score(y_test, y_pred)
-    prec = precision_score(y_test, y_pred)
-    rec = recall_score(y_test, y_pred)
-    f1 = f1_score(y_test, y_pred)
+
+    # Handle both binary and multiclass safely
+    prec = precision_score(y_test, y_pred, average='weighted', zero_division=0)
+    rec = recall_score(y_test, y_pred, average='weighted', zero_division=0)
+    f1 = f1_score(y_test, y_pred, average='weighted', zero_division=0)
 
     return {
         "Model": name,
@@ -86,6 +88,7 @@ def evaluate(model, name):
         "F1 Score": f1,
         "Predictions": y_pred
     }
+
 
 # ---------------- HYBRID (PSO+ACO+GA SIMULATION) ---------------- #
 def hybrid_model():
@@ -157,3 +160,4 @@ if run:
     ax.set_title(f"Confusion Matrix - {best_model_name}")
 
     st.pyplot(fig)
+
