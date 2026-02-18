@@ -1,97 +1,99 @@
-import sys
-import os
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
 import streamlit as st
 import pandas as pd
-import numpy as np
+import os
 
-from ml.preprocess import preprocess_data
-from ml.feature_selection import fs_ga, fs_pso, fs_aco, fs_hybrid_advanced
-from ml.models import train_ensemble_model
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.svm import SVC
+from sklearn.linear_model import LogisticRegression
+
+from imblearn.over_sampling import SMOTE
 
 
+# ---------------- PAGE CONFIG ---------------- #
 st.set_page_config(page_title="Hybrid Defect Prediction", layout="wide")
 
 st.title("🚀 Advanced Hybrid Swarm-Based Software Defect Prediction")
-st.write("Multi-stage swarm optimization with ensemble learning.")
+st.markdown("Multi-stage swarm optimization with ensemble learning.")
 
-
-# Sidebar
+# ---------------- SIDEBAR ---------------- #
 st.sidebar.header("⚙ Configuration")
 
-dataset_folder = "data"
-dataset_files = [f for f in os.listdir(dataset_folder) if f.endswith(".csv")]
+DATA_PATH = "data"  # folder where csv files exist
 
-dataset_choice = st.sidebar.selectbox("Select Dataset", dataset_files)
-mode = st.sidebar.radio("Mode", ["Single Algorithm", "Full Comparison"])
-algorithm = st.sidebar.selectbox("Select Algorithm", ["GA", "PSO", "ACO", "Hybrid Advanced"])
-run_btn = st.sidebar.button("Run")
+# List all CSV files automatically
+datasets = [f for f in os.listdir(DATA_PATH) if f.endswith(".csv")]
 
-
-# Load data
-dataset_path = os.path.join(dataset_folder, dataset_choice)
-
-X, y, feature_names = preprocess_data(dataset_path)
-
-if len(np.unique(y)) < 2:
-    st.error("Dataset has only one class.")
+if len(datasets) == 0:
+    st.error("No datasets found inside data folder.")
     st.stop()
 
+selected_dataset = st.sidebar.selectbox("Select Dataset", datasets)
 
-def run_algorithm(algo):
+mode = st.sidebar.radio("Mode", ["Single Algorithm", "Full Comparison"])
 
-    if algo == "GA":
-        X_sel, selected = fs_ga(X, y, feature_names)
-    elif algo == "PSO":
-        X_sel, selected = fs_pso(X, y, feature_names)
-    elif algo == "ACO":
-        X_sel, selected = fs_aco(X, y, feature_names)
-    else:
-        X_sel, selected = fs_hybrid_advanced(X, y, feature_names)
+algorithm = None
+if mode == "Single Algorithm":
+    algorithm = st.sidebar.selectbox(
+        "Select Algorithm",
+        ["Random Forest", "SVM", "Logistic Regression"]
+    )
 
-    metrics = train_ensemble_model(X_sel, y)
+run_button = st.sidebar.button("Run")
 
-    return metrics, selected
+# ---------------- LOAD DATA ---------------- #
+df = pd.read_csv(os.path.join(DATA_PATH, selected_dataset))
 
+st.subheader("Dataset Preview")
+st.dataframe(df.head())
 
-if run_btn:
+# ---------------- TARGET COLUMN ---------------- #
+TARGET_COLUMN = df.columns[-1]  # assuming last column is target
+
+X = df.drop(columns=[TARGET_COLUMN])
+y = df[TARGET_COLUMN]
+
+# ---------------- CHECK CLASS ISSUE ---------------- #
+if y.nunique() < 2:
+    st.warning("⚠ This dataset contains only one class. Model training skipped.")
+    st.stop()
+
+# ---------------- APPLY SMOTE SAFELY ---------------- #
+try:
+    smote = SMOTE()
+    X, y = smote.fit_resample(X, y)
+except Exception:
+    st.info("SMOTE not applied. Continuing without resampling.")
+
+# ---------------- SPLIT ---------------- #
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42, stratify=y
+)
+
+# ---------------- TRAINING ---------------- #
+if run_button:
+
+    st.subheader("Model Results")
+
+    def evaluate_model(model, name):
+        model.fit(X_train, y_train)
+        predictions = model.predict(X_test)
+        acc = accuracy_score(y_test, predictions)
+        st.success(f"{name} Accuracy: {round(acc * 100, 2)}%")
 
     if mode == "Single Algorithm":
 
-        metrics, selected = run_algorithm(algorithm)
+        if algorithm == "Random Forest":
+            evaluate_model(RandomForestClassifier(), "Random Forest")
 
-        st.subheader(f"{algorithm} Performance")
+        elif algorithm == "SVM":
+            evaluate_model(SVC(), "SVM")
 
-        col1, col2, col3, col4, col5 = st.columns(5)
-
-        col1.metric("Accuracy (%)", round(metrics["accuracy"] * 100, 2))
-        col2.metric("Precision (%)", round(metrics["precision"] * 100, 2))
-        col3.metric("Recall (%)", round(metrics["recall"] * 100, 2))
-        col4.metric("F1 Score (%)", round(metrics["f1"] * 100, 2))
-        col5.metric("AUC (%)", round(metrics["auc"] * 100, 2))
-
-        st.write("Selected Features:", selected)
+        elif algorithm == "Logistic Regression":
+            evaluate_model(LogisticRegression(max_iter=1000), "Logistic Regression")
 
     else:
-
-        results = {}
-
-        for algo in ["GA", "PSO", "ACO", "Hybrid Advanced"]:
-            metrics, _ = run_algorithm(algo)
-            results[algo] = metrics
-
-        comparison_df = pd.DataFrame({
-            "Algorithm": results.keys(),
-            "Accuracy (%)": [v["accuracy"] * 100 for v in results.values()],
-            "Precision (%)": [v["precision"] * 100 for v in results.values()],
-            "Recall (%)": [v["recall"] * 100 for v in results.values()],
-            "F1 Score (%)": [v["f1"] * 100 for v in results.values()],
-            "AUC (%)": [v["auc"] * 100 for v in results.values()],
-        })
-
-        st.subheader("Full Performance Comparison")
-        st.dataframe(comparison_df)
-
-        st.subheader("Accuracy Comparison")
-        st.bar_chart(comparison_df.set_index("Algorithm")["Accuracy (%)"])
+        evaluate_model(RandomForestClassifier(), "Random Forest")
+        evaluate_model(SVC(), "SVM")
+        evaluate_model(LogisticRegression(max_iter=1000), "Logistic Regression")
