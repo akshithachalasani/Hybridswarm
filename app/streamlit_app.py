@@ -11,7 +11,7 @@ from sklearn.metrics import (
     f1_score,
     ConfusionMatrixDisplay
 )
-from sklearn.ensemble import RandomForestClassifier, StackingClassifier
+from sklearn.ensemble import RandomForestClassifier, VotingClassifier, GradientBoostingClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.svm import SVC
 from imblearn.over_sampling import SMOTE
@@ -32,30 +32,25 @@ st.markdown("""
     color: #FFFFFF;
 }
 
-/* Sidebar */
 section[data-testid="stSidebar"] {
     background-color: #1E1E1E;
     color: white;
 }
 
-/* Headings */
 h1, h2, h3 {
     color: #00BFFF !important;
 }
 
-/* Paragraph text */
 p, label, span {
     color: #FFFFFF !important;
 }
 
-/* Buttons */
 div.stButton > button {
     background-color: #00BFFF !important;
     color: black !important;
     font-weight: bold !important;
 }
 
-/* Table styling */
 thead tr th {
     background-color: #00BFFF !important;
     color: black !important;
@@ -112,7 +107,7 @@ if y.nunique() < 2:
 
 # ================= SMOTE ================= #
 try:
-    sm = SMOTE()
+    sm = SMOTE(random_state=42)
     X, y = sm.fit_resample(X, y)
 except:
     pass
@@ -122,7 +117,7 @@ X_train, X_test, y_train, y_test = train_test_split(
 )
 
 
-# ================= EVALUATION FUNCTION ================= #
+# ================= EVALUATION ================= #
 def evaluate(model, name):
     model.fit(X_train, y_train)
     y_pred = model.predict(X_test)
@@ -141,53 +136,55 @@ def evaluate(model, name):
 
 def pso_model():
     return RandomForestClassifier(
-        n_estimators=250,
-        max_depth=18,
+        n_estimators=300,
+        max_depth=20,
         random_state=42
     )
 
 def ga_model():
     return LogisticRegression(
-        C=5,
-        max_iter=2000
+        C=6,
+        max_iter=3000
     )
 
 def aco_model():
     return SVC(
-        C=8,
+        C=12,
         kernel="rbf",
         probability=True
     )
 
 
-# ================= HYBRID MODEL ================= #
+# ================= STRONG HYBRID MODEL (SOFT VOTING) ================= #
 def hybrid_model():
 
     rf = RandomForestClassifier(
-        n_estimators=400,
-        max_depth=25,
+        n_estimators=500,
+        max_depth=None,
         random_state=42
     )
 
     svm = SVC(
-        C=15,
+        C=20,
         kernel="rbf",
         probability=True
     )
 
     lr = LogisticRegression(
-        C=8,
-        max_iter=4000
+        C=10,
+        max_iter=5000
     )
 
-    hybrid = StackingClassifier(
+    gb = GradientBoostingClassifier()
+
+    hybrid = VotingClassifier(
         estimators=[
             ("rf", rf),
             ("svm", svm),
-            ("lr", lr)
+            ("lr", lr),
+            ("gb", gb)
         ],
-        final_estimator=RandomForestClassifier(n_estimators=200),
-        passthrough=True
+        voting="soft"
     )
 
     return hybrid
@@ -222,14 +219,13 @@ if run:
 
     results_df = pd.DataFrame(results)
 
-    # Remove Predictions column before display
     display_df = results_df[["Model", "Accuracy", "Precision", "Recall", "F1 Score"]]
 
-    # Static table (No search, no sort, no hide/pin)
     st.table(display_df)
 
+
     # ================= CONFUSION MATRIX ================= #
-    st.markdown("## 🔍 Confusion Matrix (Best Model)")
+    st.markdown("## 🔍 Confusion Matrix (First Model in List)")
 
     best_row = results_df.iloc[0]
     best_predictions = best_row["Predictions"]
