@@ -24,24 +24,50 @@ st.set_page_config(
     layout="wide"
 )
 
-# ================= BLACK-YELLOW UI ================= #
+# ================= PROFESSIONAL DARK THEME ================= #
 st.markdown("""
 <style>
 .stApp {
-    background-color: #0d0d0d;
+    background-color: #121212;
+    color: #FFFFFF;
+}
+
+/* Sidebar */
+section[data-testid="stSidebar"] {
+    background-color: #1E1E1E;
     color: white;
 }
-section[data-testid="stSidebar"] {
-    background-color: #111111;
-}
+
+/* Headings */
 h1, h2, h3 {
-    color: #FFD700 !important;
+    color: #00BFFF !important;
 }
+
+/* Paragraph text */
+p, label, span {
+    color: #FFFFFF !important;
+}
+
+/* Buttons */
 div.stButton > button {
-    background-color: #FFD700 !important;
+    background-color: #00BFFF !important;
     color: black !important;
     font-weight: bold !important;
 }
+
+/* Table styling */
+thead tr th {
+    background-color: #00BFFF !important;
+    color: black !important;
+    text-align: center !important;
+}
+
+tbody tr td {
+    background-color: #1E1E1E !important;
+    color: white !important;
+    text-align: center !important;
+}
+
 footer {visibility: hidden;}
 </style>
 """, unsafe_allow_html=True)
@@ -55,7 +81,7 @@ st.markdown("""
 
 
 # ================= SIDEBAR ================= #
-st.sidebar.markdown("<h2 style='color:#FFD700;'>⚙ Configuration</h2>", unsafe_allow_html=True)
+st.sidebar.markdown("## ⚙ Configuration")
 
 DATA_PATH = "data"
 datasets = [f for f in os.listdir(DATA_PATH) if f.endswith(".csv")]
@@ -96,24 +122,23 @@ X_train, X_test, y_train, y_test = train_test_split(
 )
 
 
-# ================= EVALUATION ================= #
+# ================= EVALUATION FUNCTION ================= #
 def evaluate(model, name):
     model.fit(X_train, y_train)
     y_pred = model.predict(X_test)
 
     return {
         "Model": name,
-        "Accuracy": accuracy_score(y_test, y_pred),
-        "Precision": precision_score(y_test, y_pred, average="weighted", zero_division=0),
-        "Recall": recall_score(y_test, y_pred, average="weighted", zero_division=0),
-        "F1 Score": f1_score(y_test, y_pred, average="weighted", zero_division=0),
+        "Accuracy": round(accuracy_score(y_test, y_pred), 4),
+        "Precision": round(precision_score(y_test, y_pred, average="weighted", zero_division=0), 4),
+        "Recall": round(recall_score(y_test, y_pred, average="weighted", zero_division=0), 4),
+        "F1 Score": round(f1_score(y_test, y_pred, average="weighted", zero_division=0), 4),
         "Predictions": y_pred
     }
 
 
 # ================= INDIVIDUAL SWARM MODELS ================= #
 
-# PSO → moderately optimized RF
 def pso_model():
     return RandomForestClassifier(
         n_estimators=250,
@@ -121,14 +146,12 @@ def pso_model():
         random_state=42
     )
 
-# GA → moderately optimized Logistic
 def ga_model():
     return LogisticRegression(
         C=5,
         max_iter=2000
     )
 
-# ACO → moderately optimized SVM
 def aco_model():
     return SVC(
         C=8,
@@ -170,7 +193,7 @@ def hybrid_model():
     return hybrid
 
 
-# ================= RUN ================= #
+# ================= RUN MODEL ================= #
 if run:
 
     st.markdown("## 📊 Model Performance")
@@ -198,9 +221,12 @@ if run:
         results.append(evaluate(hybrid_model(), "Hybrid"))
 
     results_df = pd.DataFrame(results)
-    results_df = results_df.sort_values("Accuracy", ascending=False)
 
-    st.dataframe(results_df[["Model", "Accuracy", "Precision", "Recall", "F1 Score"]])
+    # Remove Predictions column before display
+    display_df = results_df[["Model", "Accuracy", "Precision", "Recall", "F1 Score"]]
+
+    # Static table (No search, no sort, no hide/pin)
+    st.table(display_df)
 
     # ================= CONFUSION MATRIX ================= #
     st.markdown("## 🔍 Confusion Matrix (Best Model)")
