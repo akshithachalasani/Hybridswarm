@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 import os
 
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import StratifiedKFold, cross_val_predict
 from sklearn.metrics import (
     accuracy_score,
     precision_score,
@@ -11,7 +11,7 @@ from sklearn.metrics import (
     f1_score,
     ConfusionMatrixDisplay
 )
-from sklearn.ensemble import RandomForestClassifier, VotingClassifier, GradientBoostingClassifier
+from sklearn.ensemble import RandomForestClassifier, StackingClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.svm import SVC
 from imblearn.over_sampling import SMOTE
@@ -24,45 +24,27 @@ st.set_page_config(
     layout="wide"
 )
 
-# ================= PROFESSIONAL DARK THEME ================= #
+# ================= DARK THEME ================= #
 st.markdown("""
 <style>
-.stApp {
-    background-color: #121212;
-    color: #FFFFFF;
-}
-
-section[data-testid="stSidebar"] {
-    background-color: #1E1E1E;
-    color: white;
-}
-
-h1, h2, h3 {
-    color: #00BFFF !important;
-}
-
-p, label, span {
-    color: #FFFFFF !important;
-}
-
+.stApp { background-color: #121212; color: white; }
+section[data-testid="stSidebar"] { background-color: #1E1E1E; }
+h1, h2, h3 { color: #00BFFF !important; }
 div.stButton > button {
     background-color: #00BFFF !important;
     color: black !important;
     font-weight: bold !important;
 }
-
 thead tr th {
     background-color: #00BFFF !important;
     color: black !important;
     text-align: center !important;
 }
-
 tbody tr td {
     background-color: #1E1E1E !important;
     color: white !important;
     text-align: center !important;
 }
-
 footer {visibility: hidden;}
 </style>
 """, unsafe_allow_html=True)
@@ -71,7 +53,7 @@ footer {visibility: hidden;}
 # ================= TITLE ================= #
 st.markdown("""
 <h1>🚀 Hybrid Swarm-Based Software Defect Prediction</h1>
-<p>PSO + GA + ACO Optimized Framework</p>
+<p>PSO + GA + ACO Optimized Framework (Cross-Validated)</p>
 """, unsafe_allow_html=True)
 
 
@@ -112,27 +94,27 @@ try:
 except:
     pass
 
-X_train, X_test, y_train, y_test = train_test_split(
-    X, y, test_size=0.2, random_state=42, stratify=y
-)
+
+# ================= CROSS VALIDATION ================= #
+cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
 
 
-# ================= EVALUATION ================= #
+# ================= EVALUATION FUNCTION ================= #
 def evaluate(model, name):
-    model.fit(X_train, y_train)
-    y_pred = model.predict(X_test)
+
+    y_pred = cross_val_predict(model, X, y, cv=cv)
 
     return {
         "Model": name,
-        "Accuracy": round(accuracy_score(y_test, y_pred), 4),
-        "Precision": round(precision_score(y_test, y_pred, average="weighted", zero_division=0), 4),
-        "Recall": round(recall_score(y_test, y_pred, average="weighted", zero_division=0), 4),
-        "F1 Score": round(f1_score(y_test, y_pred, average="weighted", zero_division=0), 4),
+        "Accuracy": round(accuracy_score(y, y_pred), 4),
+        "Precision": round(precision_score(y, y_pred, average="weighted", zero_division=0), 4),
+        "Recall": round(recall_score(y, y_pred, average="weighted", zero_division=0), 4),
+        "F1 Score": round(f1_score(y, y_pred, average="weighted", zero_division=0), 4),
         "Predictions": y_pred
     }
 
 
-# ================= INDIVIDUAL SWARM MODELS ================= #
+# ================= INDIVIDUAL MODELS ================= #
 
 def pso_model():
     return RandomForestClassifier(
@@ -144,7 +126,7 @@ def pso_model():
 def ga_model():
     return LogisticRegression(
         C=6,
-        max_iter=3000
+        max_iter=4000
     )
 
 def aco_model():
@@ -155,45 +137,31 @@ def aco_model():
     )
 
 
-# ================= STRONG HYBRID MODEL (SOFT VOTING) ================= #
+# ================= HYBRID STACKING MODEL ================= #
 def hybrid_model():
 
-    rf = RandomForestClassifier(
-        n_estimators=500,
-        max_depth=None,
-        random_state=42
-    )
+    rf = RandomForestClassifier(n_estimators=300, random_state=42)
+    svm = SVC(C=12, kernel="rbf", probability=True)
+    lr = LogisticRegression(max_iter=4000)
 
-    svm = SVC(
-        C=20,
-        kernel="rbf",
-        probability=True
-    )
-
-    lr = LogisticRegression(
-        C=10,
-        max_iter=5000
-    )
-
-    gb = GradientBoostingClassifier()
-
-    hybrid = VotingClassifier(
+    hybrid = StackingClassifier(
         estimators=[
             ("rf", rf),
             ("svm", svm),
-            ("lr", lr),
-            ("gb", gb)
+            ("lr", lr)
         ],
-        voting="soft"
+        final_estimator=LogisticRegression(),
+        cv=cv,
+        passthrough=True
     )
 
     return hybrid
 
 
-# ================= RUN MODEL ================= #
+# ================= RUN ================= #
 if run:
 
-    st.markdown("## 📊 Model Performance")
+    st.markdown("## 📊 Model Performance (5-Fold Cross Validation)")
 
     results = []
 
@@ -223,21 +191,22 @@ if run:
 
     st.table(display_df)
 
+    # ================= BEST MODEL ================= #
+    best_index = results_df["Accuracy"].idxmax()
+    best_row = results_df.loc[best_index]
+
+    st.markdown(f"### 🏆 Best Model: {best_row['Model']}")
 
     # ================= CONFUSION MATRIX ================= #
-    st.markdown("## 🔍 Confusion Matrix (First Model in List)")
-
-    best_row = results_df.iloc[0]
-    best_predictions = best_row["Predictions"]
-    best_model_name = best_row["Model"]
+    st.markdown("## 🔍 Confusion Matrix (Best Model - CV Predictions)")
 
     fig, ax = plt.subplots()
     ConfusionMatrixDisplay.from_predictions(
-        y_test,
-        best_predictions,
+        y,
+        best_row["Predictions"],
         ax=ax,
         cmap="Blues"
     )
 
-    ax.set_title(f"Confusion Matrix - {best_model_name}")
+    ax.set_title(f"Confusion Matrix - {best_row['Model']}")
     st.pyplot(fig)
