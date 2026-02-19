@@ -11,9 +11,11 @@ from sklearn.metrics import (
     f1_score,
     ConfusionMatrixDisplay
 )
-from sklearn.ensemble import RandomForestClassifier, VotingClassifier, GradientBoostingClassifier
+from sklearn.ensemble import RandomForestClassifier, StackingClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.svm import SVC
+from sklearn.preprocessing import StandardScaler
+from sklearn.pipeline import make_pipeline
 from imblearn.over_sampling import SMOTE
 import matplotlib.pyplot as plt
 
@@ -24,27 +26,49 @@ st.set_page_config(
     layout="wide"
 )
 
-# ================= DARK THEME ================= #
+# ================= HIGH VISIBILITY DARK UI ================= #
 st.markdown("""
 <style>
-.stApp { background-color: #121212; color: white; }
-section[data-testid="stSidebar"] { background-color: #1E1E1E; }
-h1, h2, h3 { color: #00BFFF !important; }
+.stApp {
+    background-color: #0E1117;
+    color: #FFFFFF;
+}
+
+section[data-testid="stSidebar"] {
+    background-color: #161B22;
+}
+
+h1, h2, h3 {
+    color: #00CFFF !important;
+    font-weight: 700;
+}
+
+p, label {
+    color: #FFFFFF !important;
+}
+
 div.stButton > button {
-    background-color: #00BFFF !important;
+    background-color: #00CFFF !important;
     color: black !important;
     font-weight: bold !important;
+    border-radius: 8px !important;
 }
+
+/* Table Styling */
 thead tr th {
-    background-color: #00BFFF !important;
+    background-color: #00CFFF !important;
     color: black !important;
     text-align: center !important;
+    font-size: 16px !important;
 }
+
 tbody tr td {
-    background-color: #1E1E1E !important;
+    background-color: #1C2128 !important;
     color: white !important;
     text-align: center !important;
+    font-size: 15px !important;
 }
+
 footer {visibility: hidden;}
 </style>
 """, unsafe_allow_html=True)
@@ -99,7 +123,7 @@ X_train, X_test, y_train, y_test = train_test_split(
 )
 
 
-# ================= EVALUATION ================= #
+# ================= EVALUATION FUNCTION ================= #
 def evaluate(model, name):
     model.fit(X_train, y_train)
     y_pred = model.predict(X_test)
@@ -116,60 +140,52 @@ def evaluate(model, name):
 
 # ================= BASE MODELS ================= #
 
-# PSO → Moderate RF
 def pso_model():
     return RandomForestClassifier(
-        n_estimators=200,
-        max_depth=15,
+        n_estimators=300,
+        max_depth=20,
         random_state=42
     )
 
-# GA → Moderate Logistic
 def ga_model():
-    return LogisticRegression(
-        C=4,
-        max_iter=3000
+    return make_pipeline(
+        StandardScaler(),
+        LogisticRegression(C=6, max_iter=4000)
     )
 
-# ACO → Moderate SVM
 def aco_model():
-    return SVC(
-        C=8,
-        kernel="rbf",
-        probability=True
+    return make_pipeline(
+        StandardScaler(),
+        SVC(C=12, kernel="rbf", probability=True)
     )
 
 
-# ================= STRONG HYBRID MODEL ================= #
+# ================= STRONG STACKING HYBRID ================= #
 def hybrid_model():
 
-    rf = RandomForestClassifier(
-        n_estimators=600,
-        max_depth=None,
-        random_state=42
+    rf = RandomForestClassifier(n_estimators=350, random_state=42)
+
+    svm = make_pipeline(
+        StandardScaler(),
+        SVC(C=15, kernel="rbf", probability=True)
     )
 
-    gb = GradientBoostingClassifier()
-
-    svm = SVC(
-        C=20,
-        kernel="rbf",
-        probability=True
+    lr = make_pipeline(
+        StandardScaler(),
+        LogisticRegression(max_iter=5000)
     )
 
-    lr = LogisticRegression(
-        C=12,
-        max_iter=5000
-    )
-
-    hybrid = VotingClassifier(
+    hybrid = StackingClassifier(
         estimators=[
             ("rf", rf),
-            ("gb", gb),
             ("svm", svm),
             ("lr", lr)
         ],
-        voting="soft"
+        final_estimator=RandomForestClassifier(
+            n_estimators=500,
+            random_state=42
+        ),
+        passthrough=True
     )
 
     return hybrid
@@ -207,7 +223,7 @@ if run:
     display_df = results_df[["Model", "Accuracy", "Precision", "Recall", "F1 Score"]]
     st.table(display_df)
 
-    # ================= SELECT BEST MODEL CORRECTLY ================= #
+    # ================= BEST MODEL ================= #
     best_index = results_df["Accuracy"].idxmax()
     best_row = results_df.loc[best_index]
 
