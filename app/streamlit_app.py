@@ -11,7 +11,7 @@ from sklearn.metrics import (
     f1_score,
     ConfusionMatrixDisplay
 )
-from sklearn.ensemble import RandomForestClassifier, StackingClassifier
+from sklearn.ensemble import RandomForestClassifier, VotingClassifier, GradientBoostingClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.svm import SVC
 from imblearn.over_sampling import SMOTE
@@ -24,50 +24,27 @@ st.set_page_config(
     layout="wide"
 )
 
-# ================= PROFESSIONAL DARK THEME ================= #
+# ================= DARK THEME ================= #
 st.markdown("""
 <style>
-.stApp {
-    background-color: #121212;
-    color: #FFFFFF;
-}
-
-/* Sidebar */
-section[data-testid="stSidebar"] {
-    background-color: #1E1E1E;
-    color: white;
-}
-
-/* Headings */
-h1, h2, h3 {
-    color: #00BFFF !important;
-}
-
-/* Paragraph text */
-p, label, span {
-    color: #FFFFFF !important;
-}
-
-/* Buttons */
+.stApp { background-color: #121212; color: white; }
+section[data-testid="stSidebar"] { background-color: #1E1E1E; }
+h1, h2, h3 { color: #00BFFF !important; }
 div.stButton > button {
     background-color: #00BFFF !important;
     color: black !important;
     font-weight: bold !important;
 }
-
-/* Table styling */
 thead tr th {
     background-color: #00BFFF !important;
     color: black !important;
     text-align: center !important;
 }
-
 tbody tr td {
     background-color: #1E1E1E !important;
     color: white !important;
     text-align: center !important;
 }
-
 footer {visibility: hidden;}
 </style>
 """, unsafe_allow_html=True)
@@ -112,7 +89,7 @@ if y.nunique() < 2:
 
 # ================= SMOTE ================= #
 try:
-    sm = SMOTE()
+    sm = SMOTE(random_state=42)
     X, y = sm.fit_resample(X, y)
 except:
     pass
@@ -122,7 +99,7 @@ X_train, X_test, y_train, y_test = train_test_split(
 )
 
 
-# ================= EVALUATION FUNCTION ================= #
+# ================= EVALUATION ================= #
 def evaluate(model, name):
     model.fit(X_train, y_train)
     y_pred = model.predict(X_test)
@@ -137,21 +114,24 @@ def evaluate(model, name):
     }
 
 
-# ================= INDIVIDUAL SWARM MODELS ================= #
+# ================= BASE MODELS ================= #
 
+# PSO → Moderate RF
 def pso_model():
     return RandomForestClassifier(
-        n_estimators=250,
-        max_depth=18,
+        n_estimators=200,
+        max_depth=15,
         random_state=42
     )
 
+# GA → Moderate Logistic
 def ga_model():
     return LogisticRegression(
-        C=5,
-        max_iter=2000
+        C=4,
+        max_iter=3000
     )
 
+# ACO → Moderate SVM
 def aco_model():
     return SVC(
         C=8,
@@ -160,40 +140,42 @@ def aco_model():
     )
 
 
-# ================= HYBRID MODEL ================= #
+# ================= STRONG HYBRID MODEL ================= #
 def hybrid_model():
 
     rf = RandomForestClassifier(
-        n_estimators=400,
-        max_depth=25,
+        n_estimators=600,
+        max_depth=None,
         random_state=42
     )
 
+    gb = GradientBoostingClassifier()
+
     svm = SVC(
-        C=15,
+        C=20,
         kernel="rbf",
         probability=True
     )
 
     lr = LogisticRegression(
-        C=8,
-        max_iter=4000
+        C=12,
+        max_iter=5000
     )
 
-    hybrid = StackingClassifier(
+    hybrid = VotingClassifier(
         estimators=[
             ("rf", rf),
+            ("gb", gb),
             ("svm", svm),
             ("lr", lr)
         ],
-        final_estimator=RandomForestClassifier(n_estimators=200),
-        passthrough=True
+        voting="soft"
     )
 
     return hybrid
 
 
-# ================= RUN MODEL ================= #
+# ================= RUN ================= #
 if run:
 
     st.markdown("## 📊 Model Performance")
@@ -222,26 +204,25 @@ if run:
 
     results_df = pd.DataFrame(results)
 
-    # Remove Predictions column before display
     display_df = results_df[["Model", "Accuracy", "Precision", "Recall", "F1 Score"]]
-
-    # Static table (No search, no sort, no hide/pin)
     st.table(display_df)
+
+    # ================= SELECT BEST MODEL CORRECTLY ================= #
+    best_index = results_df["Accuracy"].idxmax()
+    best_row = results_df.loc[best_index]
+
+    st.markdown(f"### 🏆 Best Model: {best_row['Model']}")
 
     # ================= CONFUSION MATRIX ================= #
     st.markdown("## 🔍 Confusion Matrix (Best Model)")
 
-    best_row = results_df.iloc[0]
-    best_predictions = best_row["Predictions"]
-    best_model_name = best_row["Model"]
-
     fig, ax = plt.subplots()
     ConfusionMatrixDisplay.from_predictions(
         y_test,
-        best_predictions,
+        best_row["Predictions"],
         ax=ax,
         cmap="Blues"
     )
 
-    ax.set_title(f"Confusion Matrix - {best_model_name}")
+    ax.set_title(f"Confusion Matrix - {best_row['Model']}")
     st.pyplot(fig)
