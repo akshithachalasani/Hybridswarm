@@ -26,27 +26,61 @@ st.set_page_config(
     layout="wide"
 )
 
-# ================= DARK UI (UNCHANGED) ================= #
+# ================= FIXED DARK UI ================= #
 st.markdown("""
 <style>
-.stApp { background-color: #0E1117; color: #FFFFFF; }
-section[data-testid="stSidebar"] { background-color: #161B22; }
-h1, h2, h3 { color: #00CFFF !important; }
+/* Main App */
+.stApp {
+    background-color: #0E1117;
+    color: white;
+}
+
+/* Sidebar */
+section[data-testid="stSidebar"] {
+    background-color: #161B22;
+}
+
+/* Force sidebar text visible */
+section[data-testid="stSidebar"] * {
+    color: white !important;
+}
+
+/* Radio & Select labels */
+label[data-testid="stWidgetLabel"] {
+    color: white !important;
+}
+
+/* Dropdown */
+div[data-baseweb="select"] * {
+    color: black !important;
+}
+
+/* Headings */
+h1, h2, h3 {
+    color: #00CFFF !important;
+}
+
+/* Buttons */
 div.stButton > button {
     background-color: #00CFFF !important;
     color: black !important;
     font-weight: bold !important;
+    border-radius: 8px !important;
 }
+
+/* Table */
 thead tr th {
     background-color: #00CFFF !important;
     color: black !important;
     text-align: center !important;
 }
+
 tbody tr td {
     background-color: #1C2128 !important;
     color: white !important;
     text-align: center !important;
 }
+
 footer {visibility: hidden;}
 </style>
 """, unsafe_allow_html=True)
@@ -201,7 +235,7 @@ if run:
     display_df = results_df[["Model", "Accuracy", "Precision", "Recall", "F1 Score"]]
     st.table(display_df)
 
-    # ================= BEST MODEL (IMPROVED TIE BREAKING) ================= #
+    # ================= BEST MODEL (Hybrid Wins Tie) ================= #
     results_sorted = results_df.sort_values(
         by=["Accuracy", "F1 Score", "Precision"],
         ascending=False
