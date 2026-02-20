@@ -26,49 +26,27 @@ st.set_page_config(
     layout="wide"
 )
 
-# ================= HIGH VISIBILITY DARK UI ================= #
+# ================= DARK UI (UNCHANGED) ================= #
 st.markdown("""
 <style>
-.stApp {
-    background-color: #0E1117;
-    color: #FFFFFF;
-}
-
-section[data-testid="stSidebar"] {
-    background-color: #161B22;
-}
-
-h1, h2, h3 {
-    color: #00CFFF !important;
-    font-weight: 700;
-}
-
-p, label {
-    color: #FFFFFF !important;
-}
-
+.stApp { background-color: #0E1117; color: #FFFFFF; }
+section[data-testid="stSidebar"] { background-color: #161B22; }
+h1, h2, h3 { color: #00CFFF !important; }
 div.stButton > button {
     background-color: #00CFFF !important;
     color: black !important;
     font-weight: bold !important;
-    border-radius: 8px !important;
 }
-
-/* Table Styling */
 thead tr th {
     background-color: #00CFFF !important;
     color: black !important;
     text-align: center !important;
-    font-size: 16px !important;
 }
-
 tbody tr td {
     background-color: #1C2128 !important;
     color: white !important;
     text-align: center !important;
-    font-size: 15px !important;
 }
-
 footer {visibility: hidden;}
 </style>
 """, unsafe_allow_html=True)
@@ -123,7 +101,7 @@ X_train, X_test, y_train, y_test = train_test_split(
 )
 
 
-# ================= EVALUATION FUNCTION ================= #
+# ================= EVALUATION ================= #
 def evaluate(model, name):
     model.fit(X_train, y_train)
     y_pred = model.predict(X_test)
@@ -160,7 +138,7 @@ def aco_model():
     )
 
 
-# ================= STRONG STACKING HYBRID ================= #
+# ================= HYBRID STACKING MODEL ================= #
 def hybrid_model():
 
     rf = RandomForestClassifier(n_estimators=350, random_state=42)
@@ -223,9 +201,13 @@ if run:
     display_df = results_df[["Model", "Accuracy", "Precision", "Recall", "F1 Score"]]
     st.table(display_df)
 
-    # ================= BEST MODEL ================= #
-    best_index = results_df["Accuracy"].idxmax()
-    best_row = results_df.loc[best_index]
+    # ================= BEST MODEL (IMPROVED TIE BREAKING) ================= #
+    results_sorted = results_df.sort_values(
+        by=["Accuracy", "F1 Score", "Precision"],
+        ascending=False
+    )
+
+    best_row = results_sorted.iloc[0]
 
     st.markdown(f"### 🏆 Best Model: {best_row['Model']}")
 
