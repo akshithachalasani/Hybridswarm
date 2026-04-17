@@ -19,81 +19,57 @@ from sklearn.pipeline import make_pipeline
 from imblearn.over_sampling import SMOTE
 import matplotlib.pyplot as plt
 
-
-# ================= PAGE CONFIG ================= #
 st.set_page_config(
     page_title="Hybrid Swarm Defect Prediction",
     layout="wide"
 )
 
-# ================= FIXED DARK UI ================= #
 st.markdown("""
 <style>
-/* Main App */
 .stApp {
     background-color: #0E1117;
     color: white;
 }
-
-/* Sidebar */
 section[data-testid="stSidebar"] {
     background-color: #161B22;
 }
-
-/* Force sidebar text visible */
 section[data-testid="stSidebar"] * {
     color: white !important;
 }
-
-/* Radio & Select labels */
 label[data-testid="stWidgetLabel"] {
     color: white !important;
 }
-
-/* Dropdown */
 div[data-baseweb="select"] * {
     color: black !important;
 }
-
-/* Headings */
 h1, h2, h3 {
     color: #00CFFF !important;
 }
-
-/* Buttons */
 div.stButton > button {
     background-color: #00CFFF !important;
     color: black !important;
     font-weight: bold !important;
     border-radius: 8px !important;
 }
-
-/* Table */
 thead tr th {
     background-color: #00CFFF !important;
     color: black !important;
     text-align: center !important;
 }
-
 tbody tr td {
     background-color: #1C2128 !important;
     color: white !important;
     text-align: center !important;
 }
-
 footer {visibility: hidden;}
 </style>
 """, unsafe_allow_html=True)
 
-
-# ================= TITLE ================= #
 st.markdown("""
 <h1>🚀 Hybrid Swarm-Based Software Defect Prediction</h1>
 <p>PSO + GA + ACO Optimized Framework</p>
 """, unsafe_allow_html=True)
 
-
-# ================= SIDEBAR ================= #
 st.sidebar.markdown("## ⚙ Configuration")
 
 DATA_PATH = "data"
@@ -111,8 +87,6 @@ if mode == "Single Algorithm":
 
 run = st.sidebar.button("Run Model")
 
-
-# ================= LOAD DATA ================= #
 df = pd.read_csv(os.path.join(DATA_PATH, dataset))
 
 TARGET = df.columns[-1]
@@ -123,7 +97,6 @@ if y.nunique() < 2:
     st.warning("Dataset contains only one class.")
     st.stop()
 
-# ================= SMOTE ================= #
 try:
     sm = SMOTE(random_state=42)
     X, y = sm.fit_resample(X, y)
@@ -134,8 +107,6 @@ X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.2, random_state=42, stratify=y
 )
 
-
-# ================= EVALUATION ================= #
 def evaluate(model, name):
     model.fit(X_train, y_train)
     y_pred = model.predict(X_test)
@@ -148,9 +119,6 @@ def evaluate(model, name):
         "F1 Score": round(f1_score(y_test, y_pred, average="weighted", zero_division=0), 4),
         "Predictions": y_pred
     }
-
-
-# ================= BASE MODELS ================= #
 
 def pso_model():
     return RandomForestClassifier(
@@ -171,8 +139,6 @@ def aco_model():
         SVC(C=12, kernel="rbf", probability=True)
     )
 
-
-# ================= HYBRID STACKING MODEL ================= #
 def hybrid_model():
 
     rf = RandomForestClassifier(n_estimators=350, random_state=42)
@@ -202,8 +168,6 @@ def hybrid_model():
 
     return hybrid
 
-
-# ================= RUN ================= #
 if run:
 
     st.markdown("## 📊 Model Performance")
@@ -235,7 +199,6 @@ if run:
     display_df = results_df[["Model", "Accuracy", "Precision", "Recall", "F1 Score"]]
     st.table(display_df)
 
-    # ================= BEST MODEL (Hybrid Wins Tie) ================= #
     results_sorted = results_df.sort_values(
         by=["Accuracy", "F1 Score", "Precision"],
         ascending=False
@@ -245,7 +208,6 @@ if run:
 
     st.markdown(f"### 🏆 Best Model: {best_row['Model']}")
 
-    # ================= CONFUSION MATRIX ================= #
     st.markdown("## 🔍 Confusion Matrix (Best Model)")
 
     fig, ax = plt.subplots()
